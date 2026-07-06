@@ -3,6 +3,22 @@ import { useNavigate } from 'react-router-dom';
 
 const VACIO = 'No registrado';
 
+const VACUNAS_MSP = [
+    'Hepatitis B',
+    'BCG',
+    'Rotavirus',
+    'Pentavalente',
+    'Neumococo',
+    'IPV',
+    'OPV',
+    'SRP',
+    'Varicela',
+    'DPT',
+    'Fiebre Amarilla',
+    'VPH',
+    'Influenza'
+];
+
 const valor = (value: any, fallback = VACIO) => {
     if (value === null || value === undefined || value === '') return fallback;
     if (typeof value === 'number' && Number.isNaN(value)) return fallback;
@@ -46,6 +62,26 @@ const formatoSiTiene = (item: any, etiquetaSiNo = false) => {
     return [item.descripcion, item.fecha].filter(Boolean).join(' - ') || 'Si';
 };
 
+const estadoVacuna = (vacunas: Record<string, any>, vacuna: string, estadoGeneral?: string) => {
+    const valorVacuna = vacunas?.[vacuna];
+    if (String(valorVacuna || '').toLowerCase() === 'aplicada' || valorVacuna === true) {
+        return 'Aplicada';
+    }
+    if (String(valorVacuna || '').toLowerCase() === 'falta' || valorVacuna === false) {
+        return 'No aplicada';
+    }
+    if (estadoGeneral === 'Completo para la edad') {
+        return 'Aplicada';
+    }
+    return 'No aplicada';
+};
+
+const resumenVacunas = (vacunas: Record<string, any>, estadoGeneral?: string) => {
+    const aplicadas = VACUNAS_MSP.filter(vacuna => estadoVacuna(vacunas, vacuna, estadoGeneral) === 'Aplicada');
+    const noAplicadas = VACUNAS_MSP.filter(vacuna => estadoVacuna(vacunas, vacuna, estadoGeneral) !== 'Aplicada');
+    return { aplicadas, noAplicadas };
+};
+
 const ordenarConsultas = (consultas: any[]) => {
     return consultas.slice().sort((a, b) => {
         const fechaA = new Date(`${a?.fecha || ''}T${a?.hora || '00:00:00'}`).getTime();
@@ -84,6 +120,8 @@ export const ReporteCompletoHCE = forwardRef<HTMLDivElement, { paciente: any }>(
     const alimentacion = antecedentes.desarrollo?.alimentacion || {};
     const apgarTotal = totalApgar(perinatales.apgar);
     const vacunas = antecedentes.vacunacion?.vacunas || {};
+    const estadoVacunacion = antecedentes.vacunacion?.estado || antecedentes.vacunacion;
+    const vacunasResumen = resumenVacunas(vacunas, estadoVacunacion);
 
     return (
         <div className="container-fluid bg-light p-4 reporte-hce-page" id="reporte-hce">
@@ -158,8 +196,30 @@ export const ReporteCompletoHCE = forwardRef<HTMLDivElement, { paciente: any }>(
 
                             <div className="antecedente-subseccion">
                                 <div className="fw-bold text-primary mb-2">Inmunizaciones</div>
-                                <div><strong>Estado:</strong> {valor(antecedentes.vacunacion?.estado || antecedentes.vacunacion)}</div>
-                                <div><strong>Vacunas:</strong> {formatoLista(vacunas, antecedentes.vacunacion?.estado === 'Incompleto' ? 'Sin detalle' : '-')}</div>
+                                <div className="mb-2"><strong>Estado:</strong> {valor(estadoVacunacion)}</div>
+                                <div className="vacunas-resumen mb-2">
+                                    <span className="vacuna-resumen-chip vacuna-ok">
+                                        {vacunasResumen.aplicadas.length} aplicadas
+                                    </span>
+                                    <span className="vacuna-resumen-chip vacuna-no">
+                                        {vacunasResumen.noAplicadas.length} no aplicadas
+                                    </span>
+                                </div>
+                                <div className="vacunas-reporte-grid">
+                                    {VACUNAS_MSP.map((vacuna) => {
+                                        const estado = estadoVacuna(vacunas, vacuna, estadoVacunacion);
+                                        const aplicada = estado === 'Aplicada';
+                                        return (
+                                            <div className={`vacuna-reporte-item ${aplicada ? 'aplicada' : 'no-aplicada'}`} key={vacuna}>
+                                                <span className="vacuna-reporte-nombre">{vacuna}</span>
+                                                <span className="vacuna-reporte-estado">
+                                                    <i className={`bi ${aplicada ? 'bi-check-circle-fill' : 'bi-x-circle-fill'}`}></i>
+                                                    {estado}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
                             <div className="antecedente-subseccion">
@@ -287,6 +347,64 @@ export const ReporteCompletoHCE = forwardRef<HTMLDivElement, { paciente: any }>(
                     border: 1px solid #e5edf5;
                     border-radius: 6px;
                     padding: 12px;
+                }
+                .vacunas-resumen {
+                    display: flex;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                }
+                .vacuna-resumen-chip {
+                    display: inline-flex;
+                    align-items: center;
+                    border-radius: 999px;
+                    padding: 4px 10px;
+                    font-size: 0.78rem;
+                    font-weight: 800;
+                }
+                .vacuna-resumen-chip.vacuna-ok {
+                    background: #d1e7dd;
+                    color: #0f5132;
+                }
+                .vacuna-resumen-chip.vacuna-no {
+                    background: #f8d7da;
+                    color: #842029;
+                }
+                .vacunas-reporte-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                    gap: 8px;
+                }
+                .vacuna-reporte-item {
+                    border-radius: 8px;
+                    border: 1px solid transparent;
+                    padding: 8px 9px;
+                    display: grid;
+                    gap: 4px;
+                    min-height: 58px;
+                    break-inside: avoid;
+                }
+                .vacuna-reporte-item.aplicada {
+                    background: #edf9f2;
+                    border-color: #95d5b2;
+                    color: #0f5132;
+                }
+                .vacuna-reporte-item.no-aplicada {
+                    background: #fff1f2;
+                    border-color: #f1aeb5;
+                    color: #842029;
+                }
+                .vacuna-reporte-nombre {
+                    font-weight: 800;
+                    color: #111827;
+                    line-height: 1.15;
+                }
+                .vacuna-reporte-estado {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 5px;
+                    font-size: 0.78rem;
+                    font-weight: 800;
+                    text-transform: uppercase;
                 }
                 .consulta-card {
                     background: #fff;
