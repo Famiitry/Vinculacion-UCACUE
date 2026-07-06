@@ -111,8 +111,10 @@ const Cie10Autocomplete: FC<Cie10AutocompleteProps> = ({ id, label, value, onCha
   const [resultados, setResultados] = useState<EnfermedadCatalogo[]>([]);
   const [buscando, setBuscando] = useState(false);
   const [abierto, setAbierto] = useState(false);
+  const isSelecting = useRef(false);
 
   useEffect(() => {
+    if (isSelecting.current) return;
     setQuery(value.descripcion || '');
   }, [value.descripcion]);
 
@@ -123,6 +125,8 @@ const Cie10Autocomplete: FC<Cie10AutocompleteProps> = ({ id, label, value, onCha
       setAbierto(false);
       return;
     }
+    
+    if (isSelecting.current) return;
 
     const timer: ReturnType<typeof setTimeout> = setTimeout(async () => {
       setBuscando(true);
@@ -143,9 +147,14 @@ const Cie10Autocomplete: FC<Cie10AutocompleteProps> = ({ id, label, value, onCha
   }, [query]);
 
   const seleccionar = (item: EnfermedadCatalogo) => {
+    isSelecting.current = true;
     onChange({ cie10: item.codigo, descripcion: item.nombre });
     setQuery(item.nombre);
     setAbierto(false);
+    
+    setTimeout(() => {
+      isSelecting.current = false;
+    }, 400);
   };
 
   return (
