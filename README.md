@@ -106,3 +106,4 @@ Al crear un paciente sin internet:
     *   Configurar Service Workers para cachear los archivos estáticos (HTML, CSS, JS), permitiendo que la app cargue "instantáneamente" sin red.
 
 # Quingeo
+new game
